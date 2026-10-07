@@ -1,0 +1,45 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Build Unity Xcode project
+        run: |
+          xcodebuild \
+            -project Unity-iPhone.xcodeproj \
+            -scheme Unity-iPhone \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Find generated app
+        run: |
+          find ~/Library/Developer/Xcode/DerivedData -type d -name "*.app" -print
+
+      - name: Create unsigned IPA
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.app" -path "*Release-iphoneos*" | head -1)
+          test -n "$APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -r Peugeot-AR-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Peugeot-AR-unsigned-IPA
+          path: Peugeot-AR-unsigned.ipa
